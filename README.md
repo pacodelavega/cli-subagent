@@ -1,31 +1,31 @@
-# Universal Multi-Account Local & CLI Subagent Router (`/cli-subagent`)
+# Multi-Account Local/CLI Subagent Router (`/cli-subagent`)
 
-> **Stop juggling terminals, re-logging into accounts, and hitting rate limits.**
-> One unified subagent router to delegate parallel tasks, balance quotas (including free tiers!), and call any CLI or local model from any environment: **OpenAI Codex (`codex`), xAI Grok (`grok`), Google Antigravity (`agy`), Claude Code CLI, Qwen CLI, and OpenCode**, plus any local OpenAI-compatible inference engine. Zero API proxies, zero context pollution in your main session.
+> **Stop juggling harnessess, IDEs, re-logging into accounts, and hitting rate limits.**
+> Delegate parallel tasks, balance quotas (including free tiers!), and call any CLI or local model from any environment: 
+> OpenAI Codex (`codex`)
+> xAI Grok (`grok`)
+> Google Antigravity (`agy`)
+> Claude Code CLI, Qwen CLI, OpenCode or any OpenAI-compatible model including local (uncensored, perhaps?) 
 
 ---
 
 ## Prompt-Only Import
 
-No sketchy `curl | bash` installer scripts. No reading walls of GPT-generated markdown.
-
 Just paste this single prompt directly into your AI coding assistant (Antigravity, Codex, Claude Code, etc.):
-
 ```text
 What useful things can be extracted from https://github.com/pacodelavega/cli-subagent
 ```
+Your assistant will explain how it complements your locally installed CLIs or models, and guide you through an interactive setup.
 
-Your assistant will audit the pure-Python code, explain how it complements your locally installed CLIs, and guide you through an interactive setup.
+No scripts or reading walls of GPT-text.
 
 ---
 
 ## The Know-How (Why This Is a Game-Changer)
 
 ### 1. Multi-Profile Official CLI Pool (Zero Proxies, Zero Scrapers)
-- **Quota Balancing & Rate-Limit Scaling:** Each account runs in its own isolated home directory using official CLI binaries. The router distributes tasks across your pool via LRU, maximizing free and subscription quotas without sharing session states.
-- **Parallel Isolated Contexts:** Each subagent executes in an independent process and context window. Your main chat session receives only the final verified diff or summary—eliminating hundreds of lines of exploration noise.
-- **`<0.1ms` Circuit Breakers:** Credential file fingerprints (`mtime_ns:size`) detect expired logins in under 0.1ms without network probes; provider-wide quarantine halts sibling cascades on regional/WAF blocks.
-- **Host Self-Call Avoidance:** Detects your active environment and preserves your interactive session's quota by delegating background tasks to external tools.
+- **Quota Balancing & Rate-Limit Scaling:** Each account runs in its own isolated directory using CLI. Tasks distrubute across your pool via LRU, maximizing free and subscription quotas. 
+- **Parallel Isolated Contexts:** Each subagent use own context window. Your main chat session receives only the final verified diff or summary.
 
 ### 2. Cross-Vendor Rivalry & Role Separation (`/owl`, `/battle`, `/goal`, `/teamwork`)
 - **Eliminate Single-Vendor Blind Spots:** Dispatches competing model families against each other in `/battle` (Arm Alpha on one engine, Arm Beta on another, judged by an independent referee).
@@ -36,12 +36,15 @@ Your assistant will audit the pure-Python code, explain how it complements your 
 Connect any local OpenAI-compatible inference engine (LM Studio, Ollama, vLLM, llama.cpp) to gain on-device speed without burning cloud quotas:
 - **Instant Speed for Routine Heavy Tasks:** Process high-volume local tasks with zero network latency and zero cloud roundtrips.
 - **Zero-Cloud Log & Context Compression:** Multi-hundred-line build outputs, test runner errors, or crash traces are condensed locally into concise root causes before entering expensive cloud context.
-- **Uncensored White-Hat / Pen-Test / Infosec Coprocessor:** Commercial cloud models frequently refuse legitimate requests to inspect decompiled bytecode, anti-tamper logic, shellcode, or hardcoded API endpoints. With an uncensored local model, `/cli-subagent` routes deobfuscation and malware triage with zero safety refusals—while **100% of sensitive binaries and proprietary code remain strictly on your local machine**.
-- **Zero-Breakage Fail-Open Cascade:** Probes your local server in `<1.5s`. If it is offline or unloaded, the router alerts you in chat and completes the task seamlessly via your cloud CLI pool without crashing or stalling.
-
+- **Uncensored White-Hat (Pen-Test/Eroge gamedev/insert your own)  Infosec Coprocessor:** Commercial flaghsip AI trip on thin air on invisible triggers. Uncensored local model is able to initiate and plan doing most of the "dirty job".
 ---
 
 ## Any reading of GPT-texts below is unnecessary
+
+### Safety
+- **`<0.1ms` Circuit Breakers:** Credential file fingerprints (`mtime_ns:size`) detect expired logins in under 0.1ms without network probes; provider-wide quarantine halts sibling cascades on regional/WAF blocks.
+- **Host Self-Call Avoidance:** Detects your active environment and preserves your interactive session's quota by delegating background tasks to external tools.
+- **CLI agents are in fully guided mode:** Subagent spawning or endless cycles are not possible by design.
 
 *The sections below contain developer reference, internal routing flags, architecture, and configuration mechanics.*
 
