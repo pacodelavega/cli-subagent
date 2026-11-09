@@ -1,0 +1,5 @@
+.cli-subagent/
+.profiles/
+logs/
+*.log
+*.jsonl
