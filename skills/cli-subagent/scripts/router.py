@@ -28,8 +28,8 @@ SPECIALIST_CUSTOM_ROLES = {
     "compact",
     "goal:compress",
     "gamedev:compress",
-    "gradle-compressor",
-    "adb-compressor",
+    "build-compressor",
+    "trace-compressor",
     "owl:compress",
     "battle:compress",
     # 3. Zero-Token Standing Cron / Health Gate

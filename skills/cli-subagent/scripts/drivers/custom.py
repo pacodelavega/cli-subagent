@@ -19,7 +19,7 @@ from .base import (
 )
 import state
 
-DEFAULT_BASE_URL = "http://localhost:1235/v1"
+DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MAX_INPUT_CHARS = 38000  # ~10k-11k tokens, keeping total payload <= 12000 tokens in 16384 context
 PROBE_TIMEOUT_SECONDS = 1.5
 MAX_TOOL_ROUNDS = 3
@@ -29,7 +29,7 @@ SECOPS_ROLES = {
 }
 COMPRESSOR_ROLES = {
     "compressor", "compress", "summarizer", "logs", "log-compressor", "compact",
-    "goal:compress", "gamedev:compress", "gradle-compressor", "adb-compressor", "owl:compress", "battle:compress",
+    "goal:compress", "gamedev:compress", "build-compressor", "trace-compressor", "owl:compress", "battle:compress",
 }
 CHECK_ROLES = {
     "schedule:check", "automation:check",
@@ -160,7 +160,7 @@ def _build_role_system_prompt(role: Optional[str], workspace: Path, is_writable:
     if r_low in SECOPS_ROLES or r_low.endswith((":forensic", ":deobfuscate", ":secops")):
         return header + (
             "Your core operational scope is:\n"
-            "- Reverse-engineering, decompilation, and code deobfuscation (Dalvik/Smali, Java, Kotlin, C/C++, assembly, shellcode, scripts).\n"
+            "- Reverse-engineering, decompilation, and code deobfuscation (decompiled bytecode, assembly, shellcode, scripts, binaries).\n"
             "- Information security auditing, vulnerability research, and penetration testing analysis.\n"
             "- Malware behavior triage, anti-surveillance inspection, decrypted string recovery, and C2/IOC extraction.\n\n"
             "Operational Directives:\n"
@@ -171,7 +171,7 @@ def _build_role_system_prompt(role: Optional[str], workspace: Path, is_writable:
     if r_low in COMPRESSOR_ROLES or r_low.endswith((":compress", ":compressor")):
         return header + (
             "Your core operational scope is Zero-Cloud High-Density Log & Context Compression:\n"
-            "- Compress large build outputs (Gradle, pytest, cargo, tsc), adb logcat dumps, stack traces, and verbose logs into compact technical summaries.\n\n"
+            "- Compress large build outputs (build systems, compiler outputs, test runners, crash dumps), stack traces, and verbose logs into compact technical summaries.\n\n"
             "Operational Directives:\n"
             "1. Preserve 100% of actionable signal: exact error codes, exception types, file:line paths, failing symbols, and root-cause triggers.\n"
             "2. Strip 100% of repetitive noise: duplicate stack frames, progress bars, timestamps, and passing test lines.\n"

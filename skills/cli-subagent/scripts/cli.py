@@ -59,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="Target local CLI provider ('auto' balances across all healthy pools)",
     )
-    parser.add_argument("--account", help="Specific account profile name (e.g. agy, codex2, grok3)")
+    parser.add_argument("--account", help="Specific account profile name (e.g. codex, claude2)")
     parser.add_argument(
         "--tier",
         choices=["fast", "workhorse", "frontier"],
@@ -119,7 +119,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         if not args.spec:
             _emit({
                 "status": "error",
-                "error": "Missing --spec for --init (example: --init --spec 'agy:1,codex:2,grok:2').",
+                "error": "Missing --spec for --init (example: --init --spec 'codex:2,claude:1').",
                 "discovery": provision.discover_environment(),
             })
             return 1

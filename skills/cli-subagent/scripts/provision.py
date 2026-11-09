@@ -38,7 +38,7 @@ For standard subagent workflows, prefer `/cli-subagent` across healthy isolated 
 CODEX_GLOBAL_BLOCK = f"""{BLOCK_START}
 ## Local CLI Subagent Delegation (`/cli-subagent`)
 
-For subagent workflows, prefer `/cli-subagent` (`~/.codex/skills/cli-subagent/scripts/cli.py`) across healthy secondary `codex2..N` profiles and external local CLIs, keeping built-in Codex subagents as fallback:
+For subagent workflows, prefer `/cli-subagent` (`~/.codex/skills/cli-subagent/scripts/cli.py`) across healthy secondary isolated profiles and external local CLIs, keeping built-in Codex subagents as fallback:
 - `review-agent` & code reviews: Delegate independent read-only defect reviews via `/cli-subagent` (`--mode read-only --tier workhorse`) to external CLI families or isolated profiles for cross-model verification before falling back to native `review-agent`.
 - Subagent exploration & bounded workers: Route parallel scans (`--tier fast`), implementation or investigation passes (`--tier workhorse`), and critical architecture (`--tier frontier`, opt-in only) via `/cli-subagent`, partitioning target files across workers.
 - Guardrails: Avoid redundant self-calls on the primary `codex` account unless `--isolate-context` is required; emit `[DISPATCH: ...]` tags; and surface `AUTH_REQUIRED` or `NETWORK_BLOCKED` alerts to the user with an offer for prompt-driven login rather than masking them behind fallback.
