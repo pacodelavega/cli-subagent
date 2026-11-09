@@ -1,6 +1,6 @@
 ---
 name: cli-subagent
-description: Universal multi-account local CLI subagent router and provisioner. Balances quotas across locally installed CLIs (agy, codex, grok, gemini, claude, qwen, opencode), auto-discovers new model families with <1ms cache checks, protects scarce frontier quotas, circuit-breaks unauthenticated profiles with explicit user alerts, and offers standard Antigravity/Codex global host integration after first initialization and verified execution.
+description: Universal multi-account local CLI subagent router and provisioner. Balances quotas across locally installed CLIs (agy, codex, grok, gemini, claude, qwen, opencode, custom OpenAI/vLLM endpoints), auto-discovers new model families with <1ms cache checks, protects scarce frontier quotas, circuit-breaks unauthenticated profiles with explicit user alerts, and offers standard Antigravity/Codex global host integration after first initialization and verified execution.
 ---
 
 # Universal Local CLI Subagent (`/cli-subagent`)
@@ -67,9 +67,20 @@ python "<SKILL_DIR>/scripts/cli.py" \
 ```
 
 ### Key Flags (`scripts/cli.py`)
-- `--provider {auto,agy,codex,grok,gemini,claude,qwen,opencode}`: `auto` round-robins across healthy enabled pools; specify a provider when cross-vendor diversity is required.
+- `--provider {auto,agy,codex,grok,gemini,claude,qwen,opencode,custom}`: `auto` round-robins across healthy enabled pools; specify a provider when cross-vendor diversity is required (`custom` routes to local/VPS OpenAI-compatible endpoints like Ollama, vLLM, or LM Studio).
 - `--tier {fast,workhorse,frontier}`: Dynamic model selection across current and future model families.
 - `--mode {plan,accept-edits,read-only,workspace-write}`: Use `plan` / `read-only` for research and reviews; use `accept-edits` / `workspace-write` only on partitioned files or isolated branches.
 - `--role <label>`: Sets `role=<label>` in `dispatch_tag`.
 - `--task-file <path>`: Pass large prompts via UTF-8 file.
 - `--status` / `--refresh`: Inspect pool health, verification state, or force a zero-token native catalog rescan.
+- `--stats`: Summarize the zero-token `WARN`/`ERROR` journal (`~/.cli-subagent/logs/`): infra failovers and explicit severity findings. Token figures are estimates. Invoke ONLY on explicit user request.
+
+### Optional Local / Private OpenAI-Compatible Endpoint (`--provider custom`)
+- **Strictly optional.** Any OpenAI-compatible server (LM Studio, Ollama, vLLM, llama.cpp, private VPS). Size the model to whatever hardware is available; with no endpoint configured, nothing changes.
+- **Narrow coprocessor, never a general worker.** With `--provider auto` the local endpoint is selected first ONLY for three role families; every other task (coding, recon, planning, AppSec review, red-team reasoning) stays on cloud CLIs, and pool exhaustion falls back to the host-native subagent, never to the local model:
+  * `forensic` / `reverser` / `deobfuscate` / `malware` / `owl:forensic` (or `*:forensic`): authorized deobfuscation, decompiled/bytecode analysis, malware triage where commercial models refuse. Samples never leave the machine. Read-only.
+  * `compressor` / `compact` / `*:compress`: shrink bulky build/test/logcat output before it enters the cloud context. Prefer deterministic filtering first; use the model only for what remains large.
+  * `schedule:check` / `automation:check` / `*:check`: zero-cloud-cost gate for recurring checks; wake a cloud agent only on an actionable finding.
+- **One-shot context, no tool loop by default.** Files referenced in `--task` (including bare filenames) are attached within the context budget and strictly inside the workspace. Raw tool-call output is treated as failure and fails over.
+- **Fail-open cascade.** Server probed before dispatch: preferred model not loaded -> any other loaded model (`LOCAL_MODEL_CASCADED`); offline / nothing loaded (`LOCAL_OFFLINE` / `LOCAL_NO_MODEL_LOADED`) -> tell the user and continue on cloud CLIs.
+- **Write safety.** In write modes, a worker that fails mid-run is NOT replayed on another worker (`partial_write_risk: true`); inspect the diff before re-dispatching.

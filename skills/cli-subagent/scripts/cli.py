@@ -48,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--decline", action="store_true", help="Record user refusal for --integrate-host so the offer is suppressed")
     parser.add_argument("--force", action="store_true", help="Allow --integrate-host without prior --verify check")
     parser.add_argument("--status", action="store_true", help="Show current configuration, model tiers, health, and host integration")
+    parser.add_argument("--stats", action="store_true", help="Analyze out-of-context telemetry logs, compression ratios, and saved cloud tokens")
     parser.add_argument("--refresh", action="store_true", help="Force refresh dynamic model catalogs across enabled CLIs")
     parser.add_argument("--login", action="store_true", help="Trigger interactive browser/console login for --account")
 
@@ -167,6 +168,10 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.status:
         _emit(router.get_status_report())
+        return 0
+
+    if args.stats:
+        _emit(state.get_telemetry_summary())
         return 0
 
     task = args.task

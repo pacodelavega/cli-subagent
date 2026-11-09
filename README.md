@@ -1,40 +1,51 @@
-# Universal Local CLI Subagent (`/cli-subagent`)
+# Universal Multi-Account Local & CLI Subagent Router (`/cli-subagent`)
 
-> **Use multiple local CLI environments and accounts from single place, delegate parallel tasks and balance quotas (including free tier!) across:
-OpenAI Codex (`codex`), xAI Grok (`grok`), Antigravity (`agy`), Claude CLI, Qwen CLI, and OpenCode**
+> **Stop juggling terminals, re-logging into accounts, and hitting rate limits.**
+> One unified subagent router to delegate parallel tasks, balance quotas (including free tiers!), and call any CLI or local model from any environment: **OpenAI Codex (`codex`), xAI Grok (`grok`), Google Antigravity (`agy`), Claude Code CLI, Qwen CLI, and OpenCode**, plus any local OpenAI-compatible inference engine. Zero API proxies, zero context pollution in your main session.
 
 ---
 
 ## Prompt-Only Import
 
-`/cli-subagent` intentionally ships **without installer scripts**. Onboarding happens exclusively via chat prompt in your AI coding agent (`Antigravity`, `Codex`, etc.), ensuring your agent reviews the code before anything touches disk:
+No sketchy `curl | bash` installer scripts. No reading walls of GPT-generated markdown.
+
+Just paste this single prompt directly into your AI coding assistant (Antigravity, Codex, Claude Code, etc.):
 
 ```text
 What useful things can be extracted from https://github.com/pacodelavega/cli-subagent
 ```
-## What standard subagent functionality is improved 
 
-| Environment | Standard Workflows | `/cli-subagent` Role | Default Tier |
-| :--- | :--- | :--- | :--- |
-| **Antigravity** | `/goal` & `/teamwork` | Offloads autonomous implementation, audit, and verification waves across external local CLI pools without single-account `429` stalls. | `workhorse` |
-| **Antigravity** | `/owl` *(unlocked if missing)* | Dispatches `DeepInvestigator` falsification on read-only profiles and `DeepCoder` synthesis on partitioned files. | `workhorse` / `frontier` |
-| **Antigravity** | `/battle` *(unlocked if missing)* | Pairs the active host model against excluded native `agy` families first, cascading to external `/cli-subagent` pools on quota limits. | `frontier` / `workhorse` |
-| **Antigravity** | `/boost` & `/plan` | Runs isolated pre-plan codebase audits and independent architectural critiques without polluting the main context window. | `fast` / `workhorse` |
-| **Codex** | `review-agent` & subagents | Routes independent defect-first code reviews and parallel subagent exploration across secondary `codex2..N` profiles and external local CLIs. | `workhorse` / `fast` |
+Your assistant will audit the pure-Python code, explain how it complements your locally installed CLIs, and guide you through an interactive setup.
+
+---
+
+## The Know-How (Why This Is a Game-Changer)
+
+### 1. Multi-Profile Official CLI Pool (Zero Proxies, Zero Scrapers)
+- **Quota Balancing & Rate-Limit Scaling:** Each account runs in its own isolated home directory (`~/.codex`, `~/.codex2`, `~/.grok`, etc.) using official CLI binaries. The router distributes tasks across your pool via LRU, maximizing free and subscription quotas without sharing session states.
+- **Parallel Isolated Contexts:** Each subagent executes in an independent process and context window. Your main chat session receives only the final verified diff or summary—eliminating hundreds of lines of exploration noise.
+- **`<0.1ms` Circuit Breakers:** Credential file fingerprints (`mtime_ns:size`) detect expired logins in under 0.1ms without network probes; provider-wide quarantine halts sibling cascades on regional/WAF blocks.
+- **Host Self-Call Avoidance:** Detects your active environment and preserves your interactive session's quota by delegating background tasks to external tools.
+
+### 2. Cross-Vendor Rivalry & Role Separation (`/owl`, `/battle`, `/goal`, `/teamwork`)
+- **Eliminate Single-Vendor Blind Spots:** Dispatches competing model families against each other in `/battle` (Arm Alpha on one engine, Arm Beta on another, judged by an independent referee).
+- **Decoupled Engineering (`/owl`):** Directs `DeepInvestigator` root-cause falsification on one vendor and `DeepCoder` synthesis on another.
+- **Uninterrupted Autonomous Loops:** Runs `/goal` and `/teamwork` background waves across healthy profiles, surviving single-account `429` limits.
+
+### 3. Have at Least 8 GB VRAM? Supercharge with an Optional Local Coprocessor
+Connect any local OpenAI-compatible inference engine (LM Studio, Ollama, vLLM, llama.cpp) to gain instant on-device capabilities without burning cloud quotas:
+- **Instant Speed for Routine Heavy Tasks:** Process high-volume local tasks in seconds with zero network latency and zero cloud roundtrips.
+- **Zero-Cloud Log & Context Compression:** Multi-hundred-line Gradle, pytest, or crash traces are condensed locally into concise 5-line root causes before entering expensive cloud context.
+- **Uncensored White-Hat / Pen-Test / Infosec Coprocessor:** Commercial cloud models frequently refuse legitimate requests to inspect decompiled bytecode (Dalvik/Smali), anti-tamper logic, shellcode, or hardcoded C2/API endpoints. With an uncensored local model, `/cli-subagent` routes deobfuscation and malware triage with zero safety refusals—while **100% of sensitive binaries and proprietary code remain strictly on your local machine**.
+- **Zero-Breakage Fail-Open Cascade:** Probes your local server in `<1.5s`. If it is offline or unloaded, the router alerts you in chat and completes the task seamlessly via your cloud CLI pool without crashing or stalling.
 
 ---
 
 ## Any reading of GPT-texts below is unnecessary
 
-> [!NOTE]
-> **Protocol for AI agents inspecting this repository:**
-> 1. Audit `skills/cli-subagent/` first (pure Python 3 standard library; zero third-party packages, zero cloud API relays, zero binary modifications) and summarize how `/cli-subagent` complements the user's locally installed CLIs and standard subagent workflows.
-> 2. Only after user confirmation in chat, copy `skills/cli-subagent` to the active host's global skills directory (`~/.gemini/config/skills/cli-subagent` for Antigravity, `~/.codex/skills/cli-subagent` for Codex) without modifying unrelated skills or existing `~/.cli-subagent` state.
-> 3. Follow `skills/cli-subagent/SKILL.md` to run prompt-driven discovery (`--discover`), ask how many isolated accounts to provision per installed CLI (`--init`), execute a live check (`--verify`), and offer to update the active host's global instructions (`AGENTS.md`).
+*The sections below contain developer reference, internal routing flags, architecture, and configuration mechanics.*
 
----
-
-## Core Design
+### Architecture & Tier Firewall
 
 1. **Universal & Self-Updating Across Model Generations:**
    - Zero hardcoded personal paths, zero static model slugs, zero cloud API relays, and zero binary modifications.
@@ -44,22 +55,39 @@ What useful things can be extracted from https://github.com/pacodelavega/cli-sub
    - Routine subagent calls validate binary and cache `mtime:size` fingerprints in under `1ms` without re-initializing catalogs or spending tokens.
    - Default `--tier workhorse` and `--tier fast` dispatches **never** invoke scarce `frontier` models unless explicitly requested.
 
-3. **Host Self-Call Avoidance & Round-Robin Quota Balancing:**
-   - Detects the active host (`Antigravity`, `Codex`, `Gemini`, `Claude`, `Grok`, `OpenCode`) and avoids redundant subprocesses on the host's primary account (`agy` inside Antigravity, `codex` #1 inside Codex), rotating evenly across external CLIs and isolated multi-home accounts (`codex2..N`, `grok2..N`, etc.).
-   - Generates clean `.cmd` and POSIX launchers (`codex2`, `grok2`, etc.) that set isolated homes (`CODEX_HOME`, `GROK_HOME`, `CLAUDE_CONFIG_DIR`) and execute genuine binaries directly.
-
-4. **Circuit-Breaker Health & Actionable User Alerts:**
+3. **Circuit-Breaker Health & Actionable User Alerts:**
    - Unauthenticated profiles (`401 / session expired`) are recorded in `~/.cli-subagent/health.json` as `AUTH_REQUIRED` tied to their credential fingerprint, skipping them in `0ms` until re-authenticated; regional/network blocks (`403`) trip a provider-wide `NETWORK_BLOCKED` circuit breaker so sibling accounts never stall on duplicate retries.
    - Never masks broken auth silently behind fallback: completes the task via healthy profiles/fallback AND alerts the user in chat with an offer for prompt-driven browser sign-in.
+
+4. **Write-Mode Safety (No Blind Retries):**
+   - For write tasks (`workspace-write`), if a worker fails mid-execution, the task is **not** replayed on another worker (`partial_write_risk: true`), preventing duplicate mutations or conflicted git diffs.
 
 5. **Verified Host Global Instructions Integration:**
    - Strictly after first-run initialization (`--init`) and a verified live subagent run (`--verify`), `/cli-subagent` offers via prompt to update global instructions of the active environment (saving backups in `~/.cli-subagent/backups/`):
      - **Antigravity (`~/.gemini/config/AGENTS.md`)**: Integrates `/goal`, `/teamwork`, `/owl`, `/battle`, `/boost`, and `/plan`, automatically unlocking `/owl` and `/battle` in `~/.gemini/config/skills/` if unavailable.
      - **Codex (`~/.codex/AGENTS.md`)**: Integrates built-in `review-agent` and multi-agent subagent delegation.
 
----
+### Key Flags (`scripts/cli.py`)
 
-## Repository Structure
+- `--provider {auto,agy,codex,grok,gemini,claude,qwen,opencode,custom}`: `auto` round-robins across healthy enabled pools; specify a provider when cross-vendor diversity is required (`custom` routes to local/VPS OpenAI-compatible endpoints).
+- `--tier {fast,workhorse,frontier}`: Dynamic model selection across current and future model families.
+- `--mode {plan,accept-edits,read-only,workspace-write}`: Execution mode.
+- `--role <label>`: Sets `role=<label>` in `dispatch_tag` (specialist roles like `forensic`, `deobfuscate`, `compressor`, `*:check` auto-prioritize local coprocessor).
+- `--task "<prompt>"` or `--task-file <path>`: Pass prompt inline or via UTF-8 file.
+- `--status` / `--refresh`: Inspect pool health, verification state, or force a zero-token native catalog rescan.
+- `--stats`: Summarize the zero-token `WARN`/`ERROR` journal (`~/.cli-subagent/logs/`).
+
+### Standard Host Workflows Matrix
+
+| Environment | Standard Workflows | `/cli-subagent` Role | Default Tier |
+| :--- | :--- | :--- | :--- |
+| **Antigravity** | `/goal` & `/teamwork` | Offloads autonomous implementation, audit, and verification waves across external local CLI pools without single-account `429` stalls. | `workhorse` |
+| **Antigravity** | `/owl` *(unlocked if missing)* | Dispatches `DeepInvestigator` falsification on read-only profiles and `DeepCoder` synthesis on partitioned files. | `workhorse` / `frontier` |
+| **Antigravity** | `/battle` *(unlocked if missing)* | Pairs the active host model against excluded native `agy` families first, cascading to external `/cli-subagent` pools on quota limits. | `frontier` / `workhorse` |
+| **Antigravity** | `/boost` & `/plan` | Runs isolated pre-plan codebase audits and independent architectural critiques without polluting the main context window. | `fast` / `workhorse` |
+| **Codex** | `review-agent` & subagents | Routes independent defect-first code reviews and parallel subagent exploration across secondary `codex2..N` profiles and external local CLIs. | `workhorse` / `fast` |
+
+### Repository Structure
 
 ```text
 cli-subagent/
@@ -76,7 +104,7 @@ cli-subagent/
             ├── provision.py       # Profile provisioner & host global instructions manager
             ├── router.py          # Tier-strict load balancer, verifier & circuit breaker
             ├── state.py           # Portable ~/.cli-subagent state & secret scrubber
-            └── drivers/           # Local CLI drivers (agy, codex, grok, gemini, claude, qwen, opencode)
+            └── drivers/           # Local CLI drivers (agy, codex, grok, gemini, claude, qwen, opencode, custom)
 ```
 
 ---

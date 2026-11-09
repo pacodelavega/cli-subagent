@@ -7,12 +7,13 @@ from .agy import AgyDriver
 from .base import BaseDriver
 from .claude import ClaudeDriver
 from .codex import CodexDriver
+from .custom import CustomDriver
 from .gemini_cli import GeminiCliDriver
 from .grok import GrokDriver
 from .opencode import OpenCodeDriver
 from .qwen import QwenDriver
 
-DRIVER_ORDER = ("agy", "codex", "grok", "gemini", "claude", "qwen", "opencode")
+DRIVER_ORDER = ("agy", "codex", "grok", "gemini", "claude", "qwen", "opencode", "custom")
 
 
 def create_driver_registry() -> Dict[str, BaseDriver]:
@@ -24,4 +25,5 @@ def create_driver_registry() -> Dict[str, BaseDriver]:
         "claude": ClaudeDriver(),
         "qwen": QwenDriver(),
         "opencode": OpenCodeDriver(),
+        "custom": CustomDriver(),
     }

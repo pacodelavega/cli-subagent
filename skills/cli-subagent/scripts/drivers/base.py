@@ -66,11 +66,9 @@ AUTH_MARKERS = (
 NETWORK_MARKERS = (
     "403 forbidden",
     "cloudflare",
-    "access denied",
     "country, region, or territory not supported",
     "region not supported",
     "geo-restricted",
-    "vpn",
     "connection refused",
     "connection reset",
     "timed out connecting",
@@ -107,11 +105,14 @@ def classify_failure(exit_code: int, stdout: str, stderr: str) -> Optional[str]:
     """Classify non-zero or error payloads into actionable health categories."""
     combined = f"{stdout or ''}\n{stderr or ''}".lower()
     if exit_code == 0:
-        # Some CLIs exit 0 while printing an explicit auth or rate-limit JSON error object
-        if '"error"' in combined or "not authenticated" in combined:
-            if any(m in combined for m in AUTH_MARKERS):
+        # Exit 0: inspect ONLY stderr. stdout carries model output, which may legitimately
+        # discuss auth/login/quota (e.g. when reviewing this very router) and must never be
+        # classified as an infrastructure failure.
+        err_low = (stderr or "").lower()
+        if '"error"' in err_low or "not authenticated" in err_low:
+            if any(m in err_low for m in AUTH_MARKERS):
                 return "AUTH_REQUIRED"
-            if any(m in combined for m in QUOTA_MARKERS):
+            if any(m in err_low for m in QUOTA_MARKERS):
                 return "QUOTA_429"
         return None
 

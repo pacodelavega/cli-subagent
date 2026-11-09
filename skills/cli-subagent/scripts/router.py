@@ -11,6 +11,47 @@ from drivers import DRIVER_ORDER, create_driver_registry
 import provision
 import state
 
+SPECIALIST_CUSTOM_ROLES = {
+    # 1. Uncensored Bytecode/Binary Forensics, Deobfuscation & Malware Triage
+    "forensic",
+    "secops",
+    "reverser",
+    "deobfuscate",
+    "malware",
+    "owl:forensic",
+    # 2. Zero-Cloud High-Density Log & Stacktrace Compression
+    "compressor",
+    "compress",
+    "summarizer",
+    "logs",
+    "log-compressor",
+    "compact",
+    "goal:compress",
+    "gamedev:compress",
+    "gradle-compressor",
+    "adb-compressor",
+    "owl:compress",
+    "battle:compress",
+    # 3. Zero-Token Standing Cron / Health Gate
+    "schedule:check",
+    "automation:check",
+}
+
+SPECIALIST_CUSTOM_SUFFIXES = (
+    ":compress",
+    ":compressor",
+    ":forensic",
+    ":deobfuscate",
+    ":check",
+)
+
+
+def is_specialist_custom_role(role: Optional[str]) -> bool:
+    r_low = (role or "").strip().lower()
+    if not r_low:
+        return False
+    return r_low in SPECIALIST_CUSTOM_ROLES or r_low.endswith(SPECIALIST_CUSTOM_SUFFIXES)
+
 
 def _select_models_for_tier(
     prov_catalog: Dict[str, Any],
@@ -89,6 +130,16 @@ def get_status_report() -> Dict[str, Any]:
         for acc in pcfg.get("accounts", []):
             name = acc["name"]
             h_entry = dict(h_accounts.get(name, {}))
+            if acc.get("enabled") is False:
+                acc_list.append({
+                    "name": name,
+                    "index": acc.get("index", 1),
+                    "status": "STANDBY_DISABLED",
+                    "detail": acc.get("description") or "Standby slot (enabled: false)",
+                    "last_used_at": h_entry.get("last_used_at"),
+                    "last_model": h_entry.get("last_model"),
+                })
+                continue
             status = h_entry.get("status", "HEALTHY")
 
             if status == "AUTH_REQUIRED" and drv:
@@ -272,8 +323,14 @@ def route_and_execute(
                 "alerts": [],
             }
         candidate_provs = [matched_prov]
-    elif req_prov == "auto":
-        candidate_provs = [p for p in DRIVER_ORDER if p in enabled_provs]
+    elif req_prov in ("auto", "custom"):
+        if req_prov == "custom":
+            candidate_provs = (
+                (["custom"] if "custom" in enabled_provs else [])
+                + [p for p in DRIVER_ORDER if p != "custom" and p in enabled_provs]
+            )
+        else:
+            candidate_provs = [p for p in DRIVER_ORDER if p in enabled_provs]
     else:
         if req_prov not in enabled_provs:
             return {
@@ -293,30 +350,40 @@ def route_and_execute(
         if key in alert_seen:
             return
         alert_seen.add(key)
+        if st_code == "AUTH_REQUIRED":
+            action_msg = f"Offer prompt-driven login for '{acc_name}' (--login --account {acc_name})."
+        elif st_code in ("LOCAL_OFFLINE", "LOCAL_NO_MODEL_LOADED", "LOCAL_MODEL_CASCADED"):
+            action_msg = (
+                "Предупредите пользователя в чате ('Локальная модель не отвечает / не загружена — стартовать?') "
+                "и продолжите выполнение без сбоев через облачный/встроенный пул."
+            )
+        else:
+            action_msg = f"Inform user of network/regional block on '{prov_name}' ({acc_name})."
         alerts.append({
             "account": acc_name,
             "provider": prov_name,
             "status": st_code,
             "message": msg,
-            "action": (
-                f"Offer prompt-driven login for '{acc_name}' (--login --account {acc_name})."
-                if st_code == "AUTH_REQUIRED"
-                else f"Inform user of network/regional block on '{prov_name}' ({acc_name})."
-            ),
+            "action": action_msg,
         })
 
     primary_candidates: List[Tuple[Tuple[int, str, int], str, Dict[str, Any], List[str]]] = []
+    fallback_candidates: List[Tuple[Tuple[int, str, int], str, Dict[str, Any], List[str]]] = []
     skipped_history: List[Dict[str, Any]] = []
+    is_specialist_role = is_specialist_custom_role(role)
 
     for prov_name in candidate_provs:
         pcfg = enabled_provs[prov_name]
         drv = drivers[prov_name]
         prov_cat = cat.get("providers", {}).get(prov_name, {})
-        models_queue = _select_models_for_tier(prov_cat, tier, model, allow_frontier_fallback)
+        eff_explicit_model = model if (req_prov == prov_name or (req_prov == "auto" and prov_name == "custom")) else None
+        models_queue = _select_models_for_tier(prov_cat, tier, eff_explicit_model, allow_frontier_fallback)
         if not models_queue:
             continue
 
         for acc_cfg in pcfg.get("accounts", []):
+            if acc_cfg.get("enabled") is False:
+                continue
             acc_name = acc_cfg["name"]
             if account and acc_name != account:
                 continue
@@ -324,12 +391,16 @@ def route_and_execute(
             h_entry = h_accounts.get(acc_name, {})
             st = h_entry.get("status", "HEALTHY")
 
+            is_fallback_prov = (req_prov == "custom" and prov_name != "custom") or (
+                req_prov == "auto" and is_specialist_role and prov_name != "custom"
+            )
             if st == "AUTH_REQUIRED":
                 cur_fp = drv.auth_fingerprint(acc_cfg, pcfg)
                 if cur_fp == h_entry.get("auth_fingerprint"):
                     detail = h_entry.get("detail") or f"{acc_name} requires authentication"
-                    record_alert(acc_name, prov_name, "AUTH_REQUIRED", detail)
-                    skipped_history.append({"account": acc_name, "status": "SKIPPED_AUTH_REQUIRED_0MS"})
+                    if not is_fallback_prov:
+                        record_alert(acc_name, prov_name, "AUTH_REQUIRED", detail)
+                        skipped_history.append({"account": acc_name, "status": "SKIPPED_AUTH_REQUIRED_0MS"})
                     continue
                 st = "HEALTHY"
 
@@ -337,8 +408,9 @@ def route_and_execute(
                 until_dt = state.parse_iso(h_entry.get("blocked_until"))
                 if until_dt and now < until_dt:
                     detail = h_entry.get("detail") or f"{acc_name} is network-blocked until {until_dt.isoformat()}"
-                    record_alert(acc_name, prov_name, "NETWORK_BLOCKED", detail)
-                    skipped_history.append({"account": acc_name, "status": "SKIPPED_NETWORK_BLOCKED_0MS"})
+                    if not is_fallback_prov:
+                        record_alert(acc_name, prov_name, "NETWORK_BLOCKED", detail)
+                        skipped_history.append({"account": acc_name, "status": "SKIPPED_NETWORK_BLOCKED_0MS"})
                     continue
                 st = "HEALTHY"
 
@@ -354,11 +426,24 @@ def route_and_execute(
                 continue
 
             sort_key = _sort_key_last_used(h_accounts, acc_name, int(acc_cfg.get("index", 1)))
-            primary_candidates.append((sort_key, prov_name, acc_cfg, models_queue))
+            if req_prov == "custom":
+                if prov_name == "custom":
+                    primary_candidates.append(((-1, "", int(acc_cfg.get("index", 1))), prov_name, acc_cfg, models_queue))
+                else:
+                    fallback_candidates.append((sort_key, prov_name, acc_cfg, models_queue))
+            elif req_prov == "auto" and prov_name == "custom":
+                # Narrow coprocessor only: specialist roles. Never a silent general-purpose fallback,
+                # because the host-native fallback (a frontier model) is stronger than a small local model.
+                if is_specialist_role and tier != "frontier":
+                    primary_candidates.append(((-1, "", int(acc_cfg.get("index", 1))), prov_name, acc_cfg, models_queue))
+            else:
+                primary_candidates.append((sort_key, prov_name, acc_cfg, models_queue))
 
     primary_candidates.sort(key=lambda item: item[0])
+    fallback_candidates.sort(key=lambda item: item[0])
     execution_plan: List[Tuple[str, Dict[str, Any], List[str]]] = [
-        (prov_name, acc_cfg, m_queue) for _, prov_name, acc_cfg, m_queue in primary_candidates
+        (prov_name, acc_cfg, m_queue)
+        for _, prov_name, acc_cfg, m_queue in (primary_candidates + fallback_candidates)
     ]
 
     ws_resolved = workspace.resolve()
@@ -408,6 +493,10 @@ def route_and_execute(
 
     attempt_num = 0
     net_blocked_providers: set[str] = set()
+    is_writable_mode = mode in ("accept-edits", "workspace-write", "auto")
+    # Failures that happen before any work starts are safe to fail over even in write modes.
+    pre_exec_failures = {"AUTH_REQUIRED", "NETWORK_BLOCKED", "LOCAL_OFFLINE", "LOCAL_NO_MODEL_LOADED", "MODEL_UNAVAILABLE"}
+    write_abort = False
     for prov_name, acc_cfg, models_queue in execution_plan:
         acc_name = acc_cfg["name"]
         if prov_name in net_blocked_providers:
@@ -442,6 +531,15 @@ def route_and_execute(
 
             f_kind = exec_res.get("failure_kind")
             if exec_res["exit_code"] == 0 and f_kind is None:
+                cur_model = str(exec_res.get("effective_model") or cur_model)
+                drv_alert = exec_res.get("driver_alert")
+                if isinstance(drv_alert, dict):
+                    record_alert(
+                        drv_alert.get("account", acc_name),
+                        drv_alert.get("provider", prov_name),
+                        drv_alert.get("status", "LOCAL_MODEL_CASCADED"),
+                        drv_alert.get("message", ""),
+                    )
                 now_iso = state.utc_now_iso()
                 h_accounts[acc_name] = {
                     "provider": prov_name,
@@ -475,10 +573,29 @@ def route_and_execute(
                     state.save_config(cfg)
 
                 eff_part = f",effort={effort}" if effort else ""
-                note_part = f",reason=failover_after_{len(attempts)}_skips" if attempts else ""
+                note_part = f",reason=failover_after_{attempt_num - 1}_attempts" if attempt_num > 1 else ""
                 dispatch_tag = (
                     f"[DISPATCH: role={role}, tier=PRIMARY, tool={prov_name}/{acc_name}, "
                     f"model={cur_model}, settings=tier={tier},mode={mode}{eff_part}{note_part}]"
+                )
+                art_portable = state.to_portable_path(attempt_dir)
+                state.record_telemetry_event(
+                    run_id=run_id,
+                    status="ok",
+                    provider=prov_name,
+                    account=acc_name,
+                    model=cur_model,
+                    role=role,
+                    tier=tier,
+                    elapsed_seconds=exec_res["elapsed_seconds"],
+                    task=task,
+                    output=exec_res["output"],
+                    response_obj=exec_res.get("response"),
+                    stderr=exec_res.get("stderr") or "",
+                    workspace=str(ws_resolved),
+                    artifacts_dir=art_portable,
+                    attempts=[a for a in attempts if not str(a.get("status", "")).startswith("SKIPPED_")],
+                    alerts=alerts,
                 )
                 payload: Dict[str, Any] = {
                     "status": "ok",
@@ -490,12 +607,9 @@ def route_and_execute(
                     "elapsed_seconds": exec_res["elapsed_seconds"],
                     "dispatch_tag": dispatch_tag,
                     "output": exec_res["output"],
-                    "response": exec_res["response"],
-                    "stderr": exec_res["stderr"],
-                    "artifacts_dir": state.to_portable_path(attempt_dir),
-                    "failover_history": attempts,
-                    "alerts": alerts,
                 }
+                if alerts:
+                    payload["alerts"] = alerts
                 if offer:
                     payload["host_integration_offer"] = offer
                 return payload
@@ -509,6 +623,12 @@ def route_and_execute(
                 "elapsed_seconds": exec_res["elapsed_seconds"],
                 "detail": state.scrub_secrets(exec_res.get("stderr") or exec_res.get("output"), limit=300),
             })
+
+            if is_writable_mode and f_kind not in pre_exec_failures:
+                # Possible partial edits: do not replay the same write task on another worker.
+                write_abort = True
+                account_aborted = True
+                break
 
             if f_kind == "AUTH_REQUIRED":
                 fp = drv.auth_fingerprint(acc_cfg, pcfg)
@@ -558,19 +678,53 @@ def route_and_execute(
                 state.save_health(health)
                 account_aborted = True
 
+            elif f_kind in ("LOCAL_OFFLINE", "LOCAL_NO_MODEL_LOADED"):
+                detail = state.scrub_secrets(exec_res.get("stderr") or "Local LLM endpoint unavailable", limit=320)
+                h_accounts[acc_name] = {
+                    "provider": prov_name,
+                    "status": "HEALTHY",
+                    "auth_fingerprint": drv.auth_fingerprint(acc_cfg, pcfg),
+                    "detail": detail,
+                    "last_checked_at": state.utc_now_iso(),
+                    "last_used_at": h_accounts.get(acc_name, {}).get("last_used_at"),
+                }
+                state.save_health(health)
+                record_alert(acc_name, prov_name, f_kind, detail)
+                account_aborted = True
+
             elif f_kind == "MODEL_UNAVAILABLE":
-                if not model and tier != "frontier":
+                if tier != "frontier":
                     for alt, meta in (cat.get("providers", {}).get(prov_name, {}).get("models") or {}).items():
                         if alt not in effective_models and meta.get("tier") in ("workhorse", "fast"):
                             effective_models.append(alt)
-                elif not model and tier == "frontier":
+                else:
                     for alt in all_prov_models:
                         if alt not in effective_models:
                             effective_models.append(alt)
             else:
                 account_aborted = True
+        if write_abort:
+            break
 
     last_status = attempts[-1]["status"] if attempts else "pool_exhausted"
+    if write_abort:
+        last_status = f"WRITE_ABORTED_{last_status}"
+    state.record_telemetry_event(
+        run_id=run_id,
+        status=last_status,
+        provider=req_prov,
+        account=account or "pool",
+        model=model or "auto",
+        role=role,
+        tier=tier,
+        elapsed_seconds=0.0,
+        task=task,
+        output="",
+        workspace=str(ws_resolved),
+        artifacts_dir=state.to_portable_path(base_run_dir),
+        attempts=attempts,
+        alerts=alerts,
+    )
     fallback_tag = (
         f"[DISPATCH: role={role}, tier=FALLBACK, tool=invoke_subagent, model=host-native, "
         f"settings=tier={tier},mode={mode}, reason={last_status}]"
@@ -580,7 +734,13 @@ def route_and_execute(
         "exit_code": 1,
         "fallback_recommended": True,
         "dispatch_tag": fallback_tag,
-        "error": f"All candidate local CLI profiles failed or exhausted quotas (last status: {last_status}).",
+        "error": (
+            f"Write-mode attempt failed mid-run ({last_status}); not replayed to avoid duplicate/partial edits. "
+            "Inspect `git status`/diff before re-dispatching."
+            if write_abort
+            else f"All candidate local CLI profiles failed or exhausted quotas (last status: {last_status})."
+        ),
+        "partial_write_risk": write_abort,
         "artifacts_dir": state.to_portable_path(base_run_dir),
         "failover_history": attempts,
         "alerts": alerts,

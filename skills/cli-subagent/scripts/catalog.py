@@ -43,6 +43,8 @@ def compute_provider_fingerprint(
     parts.append(f"bin:{state.file_fingerprint(bin_path) or 'none'}")
     for cache_path in driver.native_catalog_cache_paths(provider_cfg):
         parts.append(f"{cache_path.parent.name}/{cache_path.name}:{state.file_fingerprint(cache_path) or 'none'}")
+    if provider_cfg.get("default_model"):
+        parts.append(f"default:{provider_cfg.get('default_model')}:{provider_cfg.get('pin_default_model', True)}")
     return "|".join(parts)
 
 
@@ -131,6 +133,12 @@ def classify_provider_models(provider: str, raw_models: List[Dict[str, Any]]) ->
                 tier = "workhorse"
                 sub_rank = 10
 
+        elif provider == "custom":
+            tier = "workhorse"
+            prio = item.get("priority")
+            family_prio = 15 if prio == 1 else 5
+            sub_rank = 10
+
         else:
             if "frontier" in d_low or bool(s_tokens & {"opus", "pro", "ultra", "max"}):
                 tier = "frontier"
@@ -168,7 +176,7 @@ def classify_provider_models(provider: str, raw_models: List[Dict[str, Any]]) ->
 
     # Safe non-frontier fallbacks within economical tiers only (NEVER leak frontier into workhorse/fast!)
     if not ordered_tiers["fast"] and ordered_tiers["workhorse"]:
-        ordered_tiers["fast"] = [ordered_tiers["workhorse"][-1]]
+        ordered_tiers["fast"] = list(ordered_tiers["workhorse"]) if provider == "custom" else [ordered_tiers["workhorse"][-1]]
     if not ordered_tiers["workhorse"] and ordered_tiers["fast"]:
         ordered_tiers["workhorse"] = [ordered_tiers["fast"][0]]
 

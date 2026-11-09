@@ -183,6 +183,11 @@ class CodexDriver(BaseDriver):
         if not final_text:
             final_text = extracted_text
 
+        # Clean exit + written final message = completed run, regardless of stderr noise
+        # (e.g. transient "failed to refresh available models" warnings).
+        if proc_res["exit_code"] == 0 and not proc_res["timed_out"] and last_msg_file.is_file() and final_text:
+            failure_kind = None
+
         return {
             "exit_code": proc_res["exit_code"],
             "elapsed_seconds": proc_res["elapsed_seconds"],
