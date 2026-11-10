@@ -1,83 +1,35 @@
 ---
 name: cli-subagent
-description: Universal multi-account local CLI subagent router and provisioner. Balances quotas across locally installed CLIs (agy, codex, grok, gemini, claude, qwen, opencode, custom OpenAI/vLLM endpoints), auto-discovers new model families with <1ms cache checks, protects scarce frontier quotas, circuit-breaks unauthenticated profiles with explicit user alerts, and offers standard host integration after first initialization and verified execution.
+description: Delegate bounded Codex work when isolated context, a different model, or a configured local worker adds value. Use for parallel investigation, independent review, and approved fallback between worker routes.
 ---
 
-# Universal Local & CLI Subagent Router (`/cli-subagent`)
+# CLI Subagent
 
-`/cli-subagent` routes bounded subagent tasks across locally installed CLI coding tools and isolated multi-account profiles. All scripts inside `scripts/` are strictly internal plumbing: the user interacts exclusively through chat prompts.
+Keep planning, edits, and acceptance with the primary agent unless the caller explicitly delegates an isolated write. When a Codex skill or workflow already calls for subagents, use its native delegation path and preserve its permissions and completion criteria. If that workflow forbids further delegation, the parent can request a separate second opinion. This skill does not register commands, configure accounts, or install workers.
 
-Resolve `<SKILL_DIR>` to the directory containing this `SKILL.md`, and invoke `python "<SKILL_DIR>/scripts/cli.py" ...`.
+## Choose the work and worker
 
-## 1. Core Operational Laws
+| Task | Route |
+| --- | --- |
+| Lint, coverage counts, mechanical migrations | Run the existing project tools. Give a fast agent a bounded batch of failures or repetitive edits when judgment is needed. |
+| Test coverage gaps | Use a normal coding agent for known behavior in a small module. Use a stronger model to find missing invariants, integration cases, or risky test assumptions. Measure coverage with the test runner. |
+| Complex refactoring | Use a strong model to map boundaries, invariants, and migration order. Use fast native explorers for independent dependency scans. Assign one writer per affected area or work sequentially. Ask a separate reviewer to check the final diff and test evidence. |
+| Independent critique | When a different model family could find materially different issues, give an approved reviewer a small input and a specific question. |
+| High-volume text triage | Filter deterministically first. If the remainder is still large, use an approved local model for a summary with source references; verify important claims against the original. |
 
-1. **Local CLIs Only:** Never configure or route through cloud API gateways, proxy scrapers, or third-party relays. Only locally installed CLI binaries enabled by the user in configuration are valid targets.
-2. **100% Prompt-Driven UX:** Never instruct the user to run Python commands or edit JSON/Markdown config files manually. Run `cli.py` yourself on the user's behalf.
-3. **Strict Tier Cost Protection:**
-   - `--tier fast`: Lightweight scans, file discovery, quick read-only checks.
-   - `--tier workhorse` *(Default)*: Everyday coding, bugfixes, code review, root-cause investigation. Strictly forbidden from touching scarce `frontier` models.
-   - `--tier frontier`: Opt-in ONLY for critical architectural synthesis, `/battle` rivalries, or complex formal invariants.
-4. **Host Self-Call Avoidance:** `cli.py` automatically skips spawning subprocesses on the active host's primary account and round-robins across external CLIs and isolated secondary profiles. Pass `--isolate-context` only when isolating noisy logs on the host CLI.
-5. **Mandatory Dispatch Tag & Actionable Alerts:**
-   - Emit the `dispatch_tag` field from `cli.py` output (`[DISPATCH: role=..., tier=PRIMARY|FALLBACK, tool=..., model=..., settings=...]`).
-   - **Never mask broken profiles silently:** Whenever `alerts` contains `AUTH_REQUIRED` or `NETWORK_BLOCKED`, complete the user's task via healthy profiles (or built-in subagent fallback when `status == "pool_exhausted"`), AND explicitly report affected profiles in chat, offering prompt-driven sign-in (`--login --account <name>`).
+When selecting a new route, choose the least costly approved route that meets the task's requirements for tools, context, permissions, and reasoning. Check the current host controls or provider catalog for the exact model and supported settings. A listing or a release announcement does not establish account access or quota. Use a host default only when the task permits it.
 
-## 2. First-Run Initialization, Live Verification & Host Integration Protocol
+Treat newly exposed model IDs as candidates. Use declared capabilities and small representative checks to decide where they fit; do not infer rank from names, versions, or release dates. Raise reasoning or change models when evidence warrants it, such as an unresolved migration invariant or a failed representative check. Stay within the approved scope.
 
-Trigger this flow when `cli.py` returns `status: "uninitialized"` (`exit_code: 2`), or when the user asks via prompt to initialize or reconfigure `/cli-subagent`:
+## Reuse the last successful route
 
-1. **Discover Installed CLIs & Host State:**
-   ```bash
-   python "<SKILL_DIR>/scripts/cli.py" --discover
-   ```
-2. **Ask Account Counts via Prompt:**
-   Present installed local CLIs (`installed: true`), showing existing profile counts (`discovered_profiles`), `max_accounts` (`1` for single-instance CLIs, up to `9` for multi-home CLIs), and auth readiness. Ask how many isolated accounts (`0..max_accounts`, `0` = disable) to configure per installed CLI.
-3. **Provision Pool & Optional Sign-In:**
-   ```bash
-   python "<SKILL_DIR>/scripts/cli.py" --init --spec "codex:2,claude:1"
-   ```
-   If selected profiles report `AUTH_REQUIRED` and the user wants to sign in now, run:
-   ```bash
-   python "<SKILL_DIR>/scripts/cli.py" --login --account <account_name>
-   ```
-4. **Execute Live Verification Run:**
-   ```bash
-   python "<SKILL_DIR>/scripts/cli.py" --verify
-   ```
-5. **Offer Global Host Instructions Integration (After Successful Run):**
-   When initialization AND the live run succeed (`status == "ok"`), check `host_integration_offer` in the JSON output. If `offer_pending` is `true`, ask the user via prompt whether to update the active environment's global instructions for standard subagent workflows:
-   - On confirmation: `python "<SKILL_DIR>/scripts/cli.py" --integrate-host` (creates automatic timestamped backups before editing).
-   - On refusal: `python "<SKILL_DIR>/scripts/cli.py" --integrate-host --decline`.
+Honor an explicit account or model pin and any no-fallback instruction. Otherwise reuse the most recently successful route for the same task type and data boundary if it is still eligible. A route identifies the worker, account or API profile, model, allowed inputs, and cost scope. Update the choice only after a usable result, in a configured private store or the current chat. If no prior choice exists, use the native route or the first approved route for that task. Do not rotate accounts merely to spread usage.
 
-## 3. Dispatching Subagent Tasks
+## Retry within the approved scope
 
-Routine execution checks binary and native `models_cache.json` fingerprints in `<1ms` with zero discovery tokens:
+- An added account or API is eligible for automatic fallback only if the user approved it for this task or a standing policy covers the same inputs, permissions, and cost. Use accounts the user is authorized to use under the provider's terms.
+- For read-only work, try at most one approved alternative by default when the first route is unavailable or returns no usable result. Keep the same bounded input and do not ask again within that scope. Ask before sending data to an unapproved provider, using unapproved API credits, or expanding file access. If no approved worker is available, continue in the host when allowed or report the blocker.
+- A process on this machine may still use remote inference. Keep local-only inputs and outputs in a verified local route, including tool output that would otherwise enter a hosted chat. Fail closed if that boundary cannot be enforced. For text workers, pass only explicit inputs and reject unsolicited tool calls. Verify workspace restrictions before dispatch.
+- A read-only retry can reuse the same verified read-only input. After a write-capable worker starts, never replay the task automatically. Confirm the first worker stopped, inspect the existing diff, and continue from that state. Use separate worktrees only for independent concurrent edits that would otherwise interfere.
 
-```bash
-python "<SKILL_DIR>/scripts/cli.py" \
-  --provider auto \
-  --tier workhorse \
-  --role investigator \
-  --mode plan \
-  --workspace "<ABSOLUTE_WORKSPACE_PATH>" \
-  --task "<SELF_CONTAINED_BOUNDED_TASK>" \
-  --run
-```
-
-### Key Flags (`scripts/cli.py`)
-- `--provider {auto,agy,codex,grok,gemini,claude,qwen,opencode,custom}`: `auto` round-robins across healthy enabled pools; specify a provider when cross-vendor diversity is required (`custom` routes to local/VPS OpenAI-compatible endpoints).
-- `--tier {fast,workhorse,frontier}`: Dynamic model selection across current and future model families.
-- `--mode {plan,accept-edits,read-only,workspace-write}`: Use `plan` / `read-only` for research and reviews; use `accept-edits` / `workspace-write` only on partitioned files or isolated branches.
-- `--role <label>`: Sets `role=<label>` in `dispatch_tag`.
-- `--task-file <path>`: Pass large prompts via UTF-8 file.
-- `--status` / `--refresh`: Inspect pool health, verification state, or force a zero-token native catalog rescan.
-
-### Optional Local / Private OpenAI-Compatible Endpoint (`--provider custom`)
-- **Strictly optional:** Works with any OpenAI-compatible server (LM Studio, Ollama, vLLM, llama.cpp, private VPS). With no endpoint configured, routing across local CLIs proceeds normally.
-- **Narrow coprocessor, never a general worker:** With `--provider auto` the local endpoint is selected first ONLY for three specialized role families; general coding, planning, and high-level reviews stay on cloud CLIs:
-  * `forensic` / `reverser` / `deobfuscate` / `malware` / `owl:forensic` (or `*:forensic`): Authorized deobfuscation, decompiled bytecode analysis, and malware triage where commercial models refuse. Samples remain on the local machine. Read-only.
-  * `compressor` / `compact` / `*:compress`: Shrinks bulky build, test runner, or crash outputs before entering cloud context.
-  * `schedule:check` / `automation:check` / `*:check`: Zero-cloud-cost gate for recurring health checks; wakes a cloud agent only on actionable findings.
-- **One-shot context attachment:** Files referenced in `--task` are attached deterministically within the context budget and strictly within the workspace boundary.
-- **Fail-open cascade:** Server is probed in `<1.5s` before dispatch. If offline or unloaded, the router alerts the user in chat and continues seamlessly on cloud CLIs without failing the task.
-- **Write safety:** In write modes, a worker that fails mid-run is NOT replayed on another worker (`partial_write_risk: true`).
+Give each worker a concrete question and the smallest input it needs. Ask for findings with evidence and the checks it actually ran. Verify the result before relying on it.
