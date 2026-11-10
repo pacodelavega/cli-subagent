@@ -1,6 +1,6 @@
 # Multi-Account Local/CLI Subagent Router (`/cli-subagent`)
 
-> **Stop juggling harnessess, IDEs, re-logging into accounts, and hitting rate limits.**
+> **Stop juggling harnesses, IDEs, re-logging into accounts, and hitting rate limits.**
 > Delegate parallel tasks, balance quotas (including free tiers!), and call any CLI or local model from any environment: 
 > OpenAI Codex (`codex`)
 > xAI Grok (`grok`)
@@ -24,8 +24,8 @@ No scripts or reading walls of GPT-text.
 ## The Know-How (Why This Is a Game-Changer)
 
 ### 1. Multi-Profile Official CLI Pool (Zero Proxies, Zero Scrapers)
-- **Quota Balancing & Rate-Limit Scaling:** Each account runs in its own isolated directory using CLI. Tasks distrubute across your pool via LRU, maximizing free and subscription quotas. 
-- **Parallel Isolated Contexts:** Each subagent use own context window. Your main chat session receives only the final verified diff or summary.
+- **Quota Balancing & Rate-Limit Scaling:** Each account runs in its own isolated directory using CLI. Tasks distribute across your pool via LRU, maximizing free and subscription quotas. 
+- **Parallel Isolated Contexts:** Each subagent uses its own context window. Your main chat session receives only the final verified diff or summary.
 
 ### 2. Cross-Vendor Rivalry & Role Separation (`/owl`, `/battle`, `/goal`, `/teamwork`)
 - **Eliminate Single-Vendor Blind Spots:** Dispatches competing model families against each other in `/battle` (Arm Alpha on one engine, Arm Beta on another, judged by an independent referee).
@@ -36,7 +36,7 @@ No scripts or reading walls of GPT-text.
 Connect any local OpenAI-compatible inference engine (LM Studio, Ollama, vLLM, llama.cpp) to gain on-device speed without burning cloud quotas:
 - **Instant Speed for Routine Heavy Tasks:** Process high-volume local tasks with zero network latency and zero cloud roundtrips.
 - **Zero-Cloud Log & Context Compression:** Multi-hundred-line build outputs, test runner errors, or crash traces are condensed locally into concise root causes before entering expensive cloud context.
-- **Uncensored White-Hat (Pen-Test/Eroge gamedev/insert your own)  Infosec Coprocessor:** Commercial flaghsip AI trip on thin air on invisible triggers. Uncensored local model is able to initiate and plan doing most of the "dirty job".
+- **Uncensored White-Hat (Pen-Test/Eroge gamedev/insert your own) Infosec Coprocessor:** Commercial flagship AI trips on thin air on invisible triggers. Uncensored local model is able to initiate and plan doing most of the "dirty job".
 ---
 
 ## Any reading of GPT-texts below is unnecessary
